@@ -1,0 +1,69 @@
+{
+	"folders": [
+		{
+			"name": "l2_e1",
+			"path": "l2/l2_e1"
+		},
+		{
+			"name": "l2_e2",
+			"path": "l2/l2_e2"
+		},
+		{
+			"name": "l3_e1",
+			"path": "l3/l3_e1"
+		},
+		{
+			"name": "l3_e2",
+			"path": "l3/l3_e2"
+		},
+		{
+			"name": "l4_e1",
+			"path": "l4/l4_e1"
+		},
+		{
+			"name": "l4_e2",
+			"path": "l4/l4_e2"
+		},
+		{
+			"name": "l4_e3",
+			"path": "l4/l4_e3"
+		},
+		{
+			"name": "l5_e1",
+			"path": "l5/l5_e1"
+		},
+		{
+			"name": "l6_e1",
+			"path": "l6/l6_e1"
+		},
+		{
+			"name": "l7_e1",
+			"path": "l7/l7_e1"
+		},
+		{
+			"name": "l7_e2",
+			"path": "l7/l7_e2"
+		},
+		{
+			"name": "l7_e3",
+			"path": "l7/l7_e3"
+		},
+		{
+			"name": "l8_e1",
+			"path": "l8/l8_e1"
+		},
+		{
+			"name": "l8_e2",
+			"path": "l8/l8_e2"
+		},
+		{
+			"name": "l1_e1",
+			"path": "l1/l1_e1"
+		}
+	],
+	"settings": {
+		"nrf-connect.applications": [
+			"c:\\Users\\aleksej.brack\\ncs-fund\\l3\\l3_e2"
+		]
+	}
+}

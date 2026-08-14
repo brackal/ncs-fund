@@ -27,3 +27,13 @@ The course supports the following hardware:
  - [Thingy:91](https://www.nordicsemi.com/Products/Development-hardware/Nordic-Thingy-91)
  - [Thingy:53](https://www.nordicsemi.com/Products/Development-hardware/Nordic-Thingy-53)
    
+   
+   # Befehle:
+   
+   Findet GPIO_DT_SPEC_GET.
+   
+   ### Im Zephyr-Root-Verzeichnis
+   grep -rn "define GPIO_DT_SPEC_GET" include/
+
+   ### oder mit west, falls du im Projekt-Workspace bist
+   grep -rn "define GPIO_DT_SPEC_GET" zephyr/include/
