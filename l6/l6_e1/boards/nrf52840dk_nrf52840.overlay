@@ -1,0 +1,32 @@
+/* For more help, browse the devicetree documentation at https://docs.zephyrproject.org/latest/build/dts/index.html
+ * You can also visit the nRF DeviceTree extension documentation at https://docs.nordicsemi.com/bundle/nrf-connect-vscode/page/guides/ncs_configure_app.html#devicetree-support-in-the-extension
+ */
+&i2c0 {
+    status = "okay";
+
+    pinctrl-0 = <&i2c0_default>;
+    pinctrl-1 = <&i2c0_sleep>;
+    pinctrl-names = "default", "sleep";
+    ht_sensor: ht_sensor@54{
+        compatible = "i2c-device";
+        status = "okay";
+        reg = < 0x54 >;
+    };
+};
+
+&pinctrl {
+	/omit-if-no-ref/ i2c0_default: i2c0_default {
+		group1  {
+			psels = <NRF_PSEL(TWIM_SCL, 1, 14)>,
+				<NRF_PSEL(TWIM_SDA, 1, 15)>;
+		};
+	};
+
+	/omit-if-no-ref/ i2c0_sleep: i2c0_sleep {
+		group1  {
+			psels = <NRF_PSEL(TWIM_SCL, 1, 14)>,
+				<NRF_PSEL(TWIM_SDA, 1, 15)>;
+			low-power-enable;
+		};
+	};
+};

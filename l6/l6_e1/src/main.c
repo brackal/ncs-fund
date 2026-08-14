@@ -8,11 +8,13 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 /* STEP 3 - Include the header file of the I2C API */
+#include <zephyr/drivers/i2c.h>
 
 /* STEP 4.1 - Include the header file of printk() */
+#include <zephyr/sys/printk.h>
 
 /* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS 1000
+#define SLEEP_TIME_MS 3000
 
 /* STEP 8 - Define the I2C slave device address and the addresses of relevant registers */
 
@@ -20,59 +22,116 @@
 #define SENSOR_CONFIG_VALUE 0x93
 
 /* STEP 6 - Get the node identifier of the sensor */
-
-/* Data structure to store BME280 data */
-struct bme280_data {
-	/* Compensation parameters */
-	uint16_t dig_t1;
-	int16_t dig_t2;
-	int16_t dig_t3;
-} bmedata;
+#define I2C_NODE DT_NODELABEL(ht_sensor)
 
 
-void bme_calibrationdata(const struct i2c_dt_spec *spec, struct bme280_data *sensor_data_ptr)
-{
-	/* Step 10 - Put calibration function code */
-}
 
-/* Compensate current temperature using previously stored sensor calibration data */
-static int32_t bme280_compensate_temp(struct bme280_data *data, int32_t adc_temp)
-{
-	int32_t var1, var2;
+int hs4003_start_single_measuring(const struct i2c_dt_spec *dev_i2c);
+int hs4003_read_measurement(const struct i2c_dt_spec *dev_i2c, float *humidityPercentRelative, float *temperatureCelcius);
+uint8_t CalculateCrc8(const uint8_t* data, uint8_t dataLength);
 
-	var1 = (((adc_temp >> 3) - ((int32_t)data->dig_t1 << 1)) * ((int32_t)data->dig_t2)) >> 11;
 
-	var2 = (((((adc_temp >> 4) - ((int32_t)data->dig_t1)) *
-		  ((adc_temp >> 4) - ((int32_t)data->dig_t1))) >>
-		 12) *
-		((int32_t)data->dig_t3)) >>
-	       14;
-
-	return ((var1 + var2) * 5 + 128) >> 8;
-}
 
 int main(void)
 {
 
 	/* STEP 7 - Retrieve the API-specific device structure and make sure that the device is
 	 * ready to use  */
+	static const struct i2c_dt_spec htSensor = I2C_DT_SPEC_GET(I2C_NODE);
+	if (!device_is_ready(htSensor.bus)) {
+		printk("I2C bus %s is not ready!\n\r",htSensor.bus->name);
+		return -1;
+	}
 
-	/* STEP 9 - Verify it is proper device by reading device id  */
-	
-	bme_calibrationdata(&dev_i2c, &bmedata);
-
-	/* STEP 11 - Setup the sensor by writing the value 0x93 to the Configuration register */
 
 	while (1) {
 
-		/* STEP 12 - Read the temperature from the sensor */
+		/* STEP 12 - Start a single measurement */
+		int ret = hs4003_start_single_measuring(&htSensor);
+		if (ret != 0) {
+			printk("Failed to read register!\n");
+			//return -1;
+		}
 
-		/* STEP 12.1 - Put the data read from registers into actual order (see datasheet) */
+		k_msleep(20); // Wait for measurement to complete
 
-		/* STEP 12.2 - Compensate temperature */
+		/* STEP 12 - Read the measurement from the sensor */
+		float humidityPercentRelative, temperatureCelcius;
 
-		/* STEP 12.3 - Convert temperature */
+		ret = hs4003_read_measurement(&htSensor, &humidityPercentRelative, &temperatureCelcius);
+		if (ret != 0) {
+			printk("Failed to get measurement!\n");
+			//return ret;
+		}
+		else {
+			printk("Humidity: %.2f, Temperature: %.2f\n", humidityPercentRelative, temperatureCelcius);
+		}
+		
 
 		k_msleep(SLEEP_TIME_MS);
 	}
+}
+
+
+
+
+
+
+int hs4003_start_single_measuring(const struct i2c_dt_spec *dev_i2c)
+{
+    uint8_t cmd[1] = { 0xF5 };  // No-hold Humidity and Temperature Measurement
+
+    int ret = i2c_write_dt(dev_i2c, cmd, sizeof(cmd));
+
+    if (ret != 0) {
+        printk("HS4003: I2C write failed, err %d\n", ret);
+        return ret;
+    }
+
+    return 0;
+}
+
+
+int hs4003_read_measurement(const struct i2c_dt_spec *dev_i2c, float *humidityPercentRelative, float *temperatureCelcius)
+{
+    uint8_t data[5];  // 2 Byte Humidity + 2 Byte Temperatur (je nach Datenblatt ggf. + CRC-Bytes)
+
+    // Kurz warten, bis Messung fertig ist (Wert laut HS4003-Datenblatt prüfen, z.B. ~20ms)
+    //k_msleep(20);
+
+    int ret = i2c_read_dt(dev_i2c, data, sizeof(data));
+    if (ret != 0) {
+        printk("HS4003: I2C read failed, err %d\n", ret);
+        return ret;
+    }
+
+	if (CalculateCrc8(&data[0], 4) != data[4]) {
+		printk("HS4003: CRC check failed!\n");
+        return -1;
+    }
+
+    /* Formel siehe Datenblatt: Humidity[% RH] = HumidityData[13:0] / (2^14 - 1) * 100 */
+    uint16_t raw_humidity = ((data[0] & 0x3F) << 8) | data[1];
+    *humidityPercentRelative = ((float)raw_humidity * 100.0f) / 16383.0f;
+
+    /* Formel siehe Datenblatt: Temperature[°C] = (TemperatureData[13:0] / (2^14 - 1) * 165 - 40) */
+    uint16_t raw_temperature = ((data[2] & 0x3F) << 8) | data[3];
+    *temperatureCelcius = ((float)raw_temperature * 165.0f / 16383.0f - 40.0f);
+
+    return 0;
+}
+
+
+
+uint8_t CalculateCrc8(const uint8_t* data, uint8_t dataLength) {
+    uint16_t g = 0x11d;
+    uint16_t crc = 0xff;
+    for (int i = 0; i < dataLength; ++i) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; ++j) {
+            crc <<= 1;
+            if (crc & (1 << 8)) crc ^= g;
+        }
+    }
+    return crc & 0xff;
 }
